@@ -27,11 +27,11 @@ func main() {
 		sendFile(relayURL, filePath)
 
 	case "server":
-		port := os.Args[2]
+		port := os.Getenv("P2PSHARE_PORT")
 		if port == "" {
 			port = "9000"
 		}
-		http.HandleFunc("/send", senderHandler)
+		http.HandleFunc("/", senderHandler)
 		http.HandleFunc("/recv", recvHandler)
 		log.Println("starting server on port: ", port)
 		log.Fatal(http.ListenAndServe(":"+port, nil))
@@ -90,7 +90,7 @@ func sendFile(url, filePath string) {
 func usage() {
 	fmt.Println("USAGE: p2pshare <cmd> <options>")
 	fmt.Println("COMMANDS:")
-	fmt.Println("    server <port>")
+	fmt.Println("    server")
 	fmt.Println("    send <url> <filepath>")
 	fmt.Println("    recv <ID>")
 }
@@ -104,7 +104,8 @@ type Peer struct {
 func senderHandler(w http.ResponseWriter, r *http.Request) {
 	serverHost := os.Getenv("P2PSHARE_HOST")
 	if serverHost == "" {
-		log.Println("[WARNING] Environment variable P2PSHARE_HOST not set")
+		log.Println("[WARNING] Environment variable P2PSHARE_HOST not set. Using localhost as default")
+		serverHost = "http://localhost:9000"
 	}
 	file, _, err := r.FormFile("senderfile")
 	if err != nil {
