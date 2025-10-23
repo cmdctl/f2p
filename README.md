@@ -15,7 +15,7 @@ A simple peer-to-peer file sharing tool that enables file transfers through a re
 - Simple command-line interface
 - Direct file transfer via HTTP
 - Unique ID generation for each file transfer
-- Support for streaming large files
+- Efficient streaming of large files (no memory loading)
 - Configurable server port and host
 
 ## Installation
@@ -68,13 +68,13 @@ This will upload the file to the server, which will provide a unique ID and down
 ## How It Works
 
 1. The relay server is started and listens for incoming connections
-2. When a file is sent, it's streamed to the server which assigns it a unique ID
+2. When a file is sent, it's streamed to the server without loading into memory, which assigns it a unique ID
 3. The server provides a download link that includes the unique ID
 4. A receiver can use the ID to retrieve the file from the server
 
 ## Security Considerations
 
-- Files are temporarily stored in memory during transfer
+- Files are streamed directly without loading into memory during transfer
 - No authentication is required to send or receive files
 - Use with caution on untrusted networks
 
@@ -82,6 +82,10 @@ This will upload the file to the server, which will provide a unique ID and down
 
 - `P2PSHARE_PORT`: Port number for the server (default: 9000)
 - `P2PSHARE_HOST`: Host address for the server (default: <http://localhost:9000>)
+
+## Memory Usage
+
+The application handles large files efficiently by streaming them directly through the HTTP request/response cycle without loading the entire file into memory. This allows for the transfer of files of any size without memory constraints.
 
 ## Building from Source
 

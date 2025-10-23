@@ -7,8 +7,10 @@ import (
 	"math/rand"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -31,9 +33,10 @@ func main() {
 		if port == "" {
 			port = "9000"
 		}
+		http.HandleFunc("/id", idHandler)
 		http.HandleFunc("/", senderHandler)
 		http.HandleFunc("/recv", recvHandler)
-		log.Println("starting server on port: ", port)
+		log.Println("starting server on port:", port)
 		log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	default:
@@ -41,50 +44,16 @@ func main() {
 	}
 }
 
-func recvHandler(w http.ResponseWriter, r *http.Request) {
-	senderID := r.URL.Query().Get("id")
-	if senderID == "" {
-		w.WriteHeader(404)
-		fmt.Fprint(w, "sender not found")
-		return
+func idHandler(w http.ResponseWriter, r *http.Request) {
+	serverHost := os.Getenv("P2PSHARE_HOST")
+	if serverHost == "" {
+		serverHost = "http://localhost:9000"
 	}
-	v, ok := peerMap.Load(senderID)
-	if !ok {
-		w.WriteHeader(404)
-		fmt.Fprint(w, "sender id not found")
-		return
-	}
-	peer := v.(Peer)
-	peer.ack <- struct{}{}
-	io.Copy(w, peer.data)
-	peer.done <- struct{}{}
-}
-
-func sendFile(url, filePath string) {
-	r, w := io.Pipe()
-	m := multipart.NewWriter(w)
-	go func() {
-		defer w.Close()
-		defer m.Close()
-		part, err := m.CreateFormFile("senderfile", filepath.Base(filePath))
-		if err != nil {
-			return
-		}
-		file, err := os.Open(filePath)
-		if err != nil {
-			return
-		}
-		defer file.Close()
-		if _, err = io.Copy(part, file); err != nil {
-			return
-		}
-	}()
-	resp, err := http.Post(url, m.FormDataContentType(), r)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer resp.Body.Close()
-	io.Copy(os.Stdout, resp.Body)
+	id := generateID()
+	// prepare the rendezvous channel
+	peerCh := make(chan Peer)
+	peerMap.Store(id, peerCh)
+	fmt.Fprintf(w, "%s/recv?id=%s\n", serverHost, id)
 }
 
 func usage() {
@@ -92,13 +61,11 @@ func usage() {
 	fmt.Println("COMMANDS:")
 	fmt.Println("    server")
 	fmt.Println("    send <url> <filepath>")
-	fmt.Println("    recv <ID>")
 }
 
 type Peer struct {
-	data io.Reader
+	w    io.Writer
 	done chan struct{}
-	ack  chan struct{}
 }
 
 func senderHandler(w http.ResponseWriter, r *http.Request) {
@@ -107,47 +74,108 @@ func senderHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("[WARNING] Environment variable P2PSHARE_HOST not set. Using localhost as default")
 		serverHost = "http://localhost:9000"
 	}
-	file, _, err := r.FormFile("senderfile")
+	senderID := r.URL.Query().Get("id")
+
+	fileReader, err := r.MultipartReader()
 	if err != nil {
-		http.Error(w, "server did not get the file", http.StatusInternalServerError)
+		fmt.Fprint(w, "could not read the request")
 		return
+	}
+	file, err := fileReader.NextPart()
+	if err != nil {
+		fmt.Fprintf(w, "could not read form part %s", err)
+		return
+	}
+
+	val, ok := peerMap.Load(senderID)
+	if !ok {
+		fmt.Fprint(w, "sender not found")
+		return
+	}
+
+	peerCh := val.(chan Peer)
+
+	peer := <-peerCh
+	io.Copy(peer.w, file)
+
+	close(peer.done)
+
+	fmt.Fprint(w, "File transfer successful!")
+}
+
+func recvHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "sender id missing in the query params")
+		return
+	}
+
+	tunnelCh, ok := peerMap.Load(id)
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, "sender not found")
+		return
+	}
+	tunnel := tunnelCh.(chan Peer)
+
+	donech := make(chan struct{})
+	tunnel <- Peer{
+		w:    w,
+		done: donech,
+	}
+
+	<-donech
+}
+
+func sendFile(baseURL, filePath string) {
+	// 1) obtain id + recv link
+	resp, err := http.Get(baseURL + "/id")
+	if err != nil {
+		log.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	// parse ID from line ".../recv?id=XXXX"
+	recvURL := strings.TrimSpace(string(b))
+	u, _ := url.Parse(recvURL)
+	id := u.Query().Get("id")
+
+	fmt.Println("\nDownload link:", recvURL)
+
+	// 2) stream upload with multipart over /upload?id=...
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err)
 	}
 	defer file.Close()
 
-	// Make sure the response can flush
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
+	pr, pw := io.Pipe()
+	mw := multipart.NewWriter(pw)
+
+	go func() {
+		defer pw.Close()
+		part, err := mw.CreateFormFile("senderfile", filepath.Base(filePath))
+		if err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		if _, err = io.Copy(part, file); err != nil {
+			pw.CloseWithError(err)
+			return
+		}
+		mw.Close()
+	}()
+
+	req, _ := http.NewRequest("POST", baseURL+"/upload?id="+id, pr)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+
+	resp2, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	// Send headers immediately to start chunked transfer
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("Transfer-Encoding", "chunked")
-	w.WriteHeader(http.StatusOK)
-
-	senderID := generateID()
-	fmt.Fprintf(w, "ID: %s\n", senderID)
-	flusher.Flush()
-
-	doneCh := make(chan struct{})
-	ackCh := make(chan struct{})
-	peer := Peer{data: file, done: doneCh, ack: ackCh}
-	peerMap.Store(senderID, peer)
-
-	fmt.Fprintf(w, "Download link: %s/recv?id=%s\n", serverHost, senderID)
-	flusher.Flush()
-
-	fmt.Fprint(w, "Waiting for receiver to connect...\n")
-	flusher.Flush()
-
-	<-ackCh
-	fmt.Fprint(w, "Receiver connected! Transferring data...\n")
-	flusher.Flush()
-
-	<-doneCh
-	fmt.Fprint(w, "Done!\n")
-	flusher.Flush()
+	defer resp2.Body.Close()
+	io.Copy(os.Stdout, resp2.Body) // prints "OK"
 }
 
 func generateID() string {
