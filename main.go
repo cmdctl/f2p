@@ -183,6 +183,7 @@ func senderHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(peer.w, file)
 
 	close(peer.done)
+	peerMap.Delete(senderID)
 
 	fmt.Fprint(w, "File transfer successful!")
 }
