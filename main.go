@@ -18,6 +18,10 @@ import (
 var peerMap sync.Map
 
 func main() {
+	if len(os.Args) == 1 {
+		usage()
+		return
+	}
 	cmd := os.Args[1]
 	switch cmd {
 	case "help":
