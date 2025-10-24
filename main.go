@@ -198,7 +198,8 @@ func recvHandler(w http.ResponseWriter, r *http.Request) {
 	tunnelCh, ok := peerMap.Load(id)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, "sender not found")
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "<h1>File exprired or not found. Ask for new download link</h1>")
 		return
 	}
 	tunnel := tunnelCh.(chan Peer)
