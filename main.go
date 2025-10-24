@@ -68,7 +68,7 @@ func usage() {
 }
 
 type Peer struct {
-	w    io.Writer
+	w    http.ResponseWriter
 	done chan struct{}
 }
 
@@ -100,6 +100,10 @@ func senderHandler(w http.ResponseWriter, r *http.Request) {
 	peerCh := val.(chan Peer)
 
 	peer := <-peerCh
+
+	peer.w.Header().Set("Content-Disposition", "attachment; filename="+file.FileName())
+	peer.w.Header().Set("Content-Type", "application/octet-stream")
+	peer.w.Header().Set("Content-Transfer-Encoding", "binary")
 	io.Copy(peer.w, file)
 
 	close(peer.done)
