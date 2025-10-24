@@ -1,20 +1,20 @@
 # Use the official Golang image to build the application
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Set the working directory inside the container
 WORKDIR /app
 
 # Copy the go mod files
-COPY go.mod go.sum ./
+COPY go.mod ./
 
 # Download dependencies
-RUN go mod download
+# RUN go mod download
 
 # Copy the source code
 COPY main.go ./
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o p2pshare .
+RUN CGO_ENABLED=0 GOOS=linux go build -o f2p .
 
 # Use a minimal alpine image for the final stage
 FROM alpine:latest
@@ -29,10 +29,10 @@ RUN adduser -D -s /bin/sh appuser
 WORKDIR /app
 
 # Copy the binary from the builder stage
-COPY --from=builder /app/p2pshare .
+COPY --from=builder /app/f2p .
 
 # Change ownership to the non-root user
-RUN chown appuser:appuser p2pshare
+RUN chown appuser:appuser f2p
 
 # Switch to the non-root user
 USER appuser
@@ -41,4 +41,4 @@ USER appuser
 EXPOSE 9000
 
 # Command to run the application
-CMD ["./p2pshare", "server"]
+CMD ["./f2p", "server"]

@@ -57,7 +57,7 @@ func idHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func usage() {
-	fmt.Println("USAGE: p2pshare <cmd> <options>")
+	fmt.Println("USAGE: f2p <cmd> <options>")
 	fmt.Println("COMMANDS:")
 	fmt.Println("    server")
 	fmt.Println("    send <url> <filepath>")

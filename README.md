@@ -1,10 +1,10 @@
-# p2pshare
+# f2p
 
 A simple peer-to-peer file sharing tool that enables file transfers through a relay server.
 
 ## Overview
 
-`p2pshare` is a command-line utility that allows users to share files between computers using a relay server. The tool supports three main operations:
+`f2p` is a command-line utility that allows users to share files between computers using a relay server. The tool supports three main operations:
 
 - Starting a relay server
 - Sending files to the relay server
@@ -20,11 +20,11 @@ A simple peer-to-peer file sharing tool that enables file transfers through a re
 
 ## Installation
 
-First, make sure you have Go installed on your system. Then you can install `p2pshare`:
+First, make sure you have Go installed on your system. Then you can install `f2p`:
 
 ```bash
 go mod tidy
-go build -o p2pshare .
+go build -o f2p .
 ```
 
 ## Usage
@@ -34,19 +34,19 @@ go build -o p2pshare .
 To start the relay server:
 
 ```bash
-./p2pshare server
+./f2p server
 ```
 
 The server will start on port 9000 by default. You can change the port using the `P2PSHARE_PORT` environment variable:
 
 ```bash
-P2PSHARE_PORT=8080 ./p2pshare server
+P2PSHARE_PORT=8080 ./f2p server
 ```
 
 Additionally, you can specify the server host using the `P2PSHARE_HOST` environment variable:
 
 ```bash
-P2PSHARE_HOST=http://yourdomain.com:8080 ./p2pshare server
+P2PSHARE_HOST=http://yourdomain.com:8080 ./f2p server
 ```
 
 ### Sending a File
@@ -54,13 +54,13 @@ P2PSHARE_HOST=http://yourdomain.com:8080 ./p2pshare server
 To send a file through the relay server:
 
 ```bash
-./p2pshare send <url> <filepath>
+./f2p send <url> <filepath>
 ```
 
 For example:
 
 ```bash
-./p2pshare send http://localhost:9000 /path/to/your/file.txt
+./f2p send http://localhost:9000 /path/to/your/file.txt
 ```
 
 This will upload the file to the server, which will provide a unique ID and download link.
@@ -91,8 +91,8 @@ The application handles large files efficiently by streaming them directly throu
 
 ```bash
 git clone <repository-url>
-cd p2pshare
-go build -o p2pshare .
+cd f2p
+go build -o f2p .
 ```
 
 ## License
