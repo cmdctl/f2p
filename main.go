@@ -149,12 +149,19 @@ type Peer struct {
 }
 
 func senderHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	serverHost := os.Getenv("P2PSHARE_HOST")
 	if serverHost == "" {
 		log.Println("[WARNING] Environment variable P2PSHARE_HOST not set. Using localhost as default")
 		serverHost = "http://localhost:9000"
 	}
 	senderID := r.URL.Query().Get("id")
+
+	go func() {
+		<-ctx.Done()
+		log.Printf("[INFO] Sender %s disconnected\n", senderID)
+		peerMap.Delete(senderID)
+	}()
 
 	fileReader, err := r.MultipartReader()
 	if err != nil {
@@ -183,8 +190,6 @@ func senderHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(peer.w, file)
 
 	close(peer.done)
-	peerMap.Delete(senderID)
-
 	fmt.Fprint(w, "File transfer successful!")
 }
 
