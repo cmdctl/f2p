@@ -266,7 +266,7 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filePath := v.(string)
-	fileMap.Delete(id)
+	// fileMap.Delete(id)
 
 	f, err := os.Open(filePath)
 	if err != nil {
