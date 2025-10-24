@@ -38,15 +38,23 @@ func main() {
 			port = "9000"
 		}
 		http.HandleFunc("/id", idHandler)
-		http.HandleFunc("/", senderHandler)
+		http.HandleFunc("/upload", senderHandler)
 		http.HandleFunc("/recv", recvHandler)
 		http.HandleFunc("/download", downloadHandler)
+		http.HandleFunc("/delete", deleteHandler)
+		http.HandleFunc("/", uploadPageHandler)
 		log.Println("starting server on port:", port)
 		log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	default:
 		usage()
 	}
+}
+
+func deleteHandler(w http.ResponseWriter, r *http.Request) {
+	senderID := r.URL.Query().Get("id")
+	peerMap.Delete(senderID)
+	w.Write([]byte("OK"))
 }
 
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +129,11 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		`, downloadLink)
 
 	w.Header().Set("Content-Type", "text/html")
+	_, ok := peerMap.Load(senderID)
+	if !ok {
+		fmt.Fprint(w, "<h1>File exprired or not found. Ask for another download link</h1>")
+		return
+	}
 	fmt.Fprint(w, html)
 }
 
@@ -149,19 +162,12 @@ type Peer struct {
 }
 
 func senderHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	serverHost := os.Getenv("P2PSHARE_HOST")
 	if serverHost == "" {
 		log.Println("[WARNING] Environment variable P2PSHARE_HOST not set. Using localhost as default")
 		serverHost = "http://localhost:9000"
 	}
 	senderID := r.URL.Query().Get("id")
-
-	go func() {
-		<-ctx.Done()
-		log.Printf("[INFO] Sender %s disconnected\n", senderID)
-		peerMap.Delete(senderID)
-	}()
 
 	fileReader, err := r.MultipartReader()
 	if err != nil {
@@ -190,6 +196,7 @@ func senderHandler(w http.ResponseWriter, r *http.Request) {
 	io.Copy(peer.w, file)
 
 	close(peer.done)
+	peerMap.Delete(senderID)
 	fmt.Fprint(w, "File transfer successful!")
 }
 
