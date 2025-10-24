@@ -38,6 +38,9 @@ func uploadPage(w http.ResponseWriter, r *http.Request) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00ff66">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>f2p • file-to-peer</title>
 <style>
 html,body {
@@ -48,6 +51,10 @@ html,body {
   display:flex; flex-direction:column;
   justify-content:center; align-items:center;
   text-align:center;
+  /* For iPhone safe-area insets */
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+  background-attachment:fixed;
 }
 h1 {
   font-weight:normal;
