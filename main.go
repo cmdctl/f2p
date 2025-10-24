@@ -40,12 +40,35 @@ func main() {
 		http.HandleFunc("/id", idHandler)
 		http.HandleFunc("/", senderHandler)
 		http.HandleFunc("/recv", recvHandler)
+		http.HandleFunc("/download", downloadHandler)
 		log.Println("starting server on port:", port)
 		log.Fatal(http.ListenAndServe(":"+port, nil))
 
 	default:
 		usage()
 	}
+}
+
+func downloadHandler(w http.ResponseWriter, r *http.Request) {
+	serverHost := os.Getenv("P2PSHARE_HOST")
+	if serverHost == "" {
+		log.Println("[WARNING] Environment variable P2PSHARE_HOST not set. Using localhost as default")
+		serverHost = "http://localhost:9000"
+	}
+	senderID := r.URL.Query().Get("id")
+
+	downloadLink := fmt.Sprintf("%s/recv?id=%s\n", serverHost, senderID)
+
+	html := fmt.Sprintf(`
+<html>
+  <body>
+    <a href="%s" download>Tap here to download</a>
+  </body>
+</html>
+		`, downloadLink)
+
+	w.Header().Set("Content-Type", "text/html")
+	fmt.Fprint(w, html)
 }
 
 func idHandler(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +80,7 @@ func idHandler(w http.ResponseWriter, r *http.Request) {
 	// prepare the rendezvous channel
 	peerCh := make(chan Peer)
 	peerMap.Store(id, peerCh)
-	fmt.Fprintf(w, "%s/recv?id=%s\n", serverHost, id)
+	fmt.Fprintf(w, "%s/download?id=%s\n", serverHost, id)
 }
 
 func usage() {
