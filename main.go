@@ -288,8 +288,8 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("File %s downloaded successfully", filePath)
 	}
 	f.Close()
-	os.Remove(filePath)
-	log.Printf("File %s deleted", filePath)
+	// os.Remove(filePath)
+	// log.Printf("File %s deleted", filePath)
 }
 
 // ===============================
