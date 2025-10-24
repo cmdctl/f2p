@@ -5,7 +5,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
+
+// Custom HTTP client with appropriate timeouts for file transfers
+var httpClient = &http.Client{
+	Timeout: 0, // No timeout to allow indefinite file transfers
+}
 
 func main() {
 	if len(os.Args) == 1 {
@@ -33,8 +39,17 @@ func main() {
 		http.HandleFunc("/download", downloadHandler)
 		http.HandleFunc("/delete", deleteHandler)
 		http.HandleFunc("/", uploadPageHandler)
+
+		// Create server with custom timeouts to handle large file transfers
+		server := &http.Server{
+			Addr:         ":" + port,
+			ReadTimeout:  0,                 // No timeout for reading request body (for large uploads)
+			WriteTimeout: 0,                 // No timeout for writing response (for large downloads)
+			IdleTimeout:  120 * time.Minute, // Idle timeout to prevent connection leaks
+		}
+
 		log.Println("starting server on port:", port)
-		log.Fatal(http.ListenAndServe(":"+port, nil))
+		log.Fatal(server.ListenAndServe())
 
 	default:
 		usage()
@@ -47,4 +62,3 @@ func usage() {
 	fmt.Println("    server")
 	fmt.Println("    send <url> <filepath>")
 }
-

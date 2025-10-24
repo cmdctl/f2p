@@ -125,7 +125,7 @@ func uploadPageHandler(w http.ResponseWriter, r *http.Request) {
 </head>
 <body>
 	<div class="card">
-		<h2>📤 Upload File</h2>
+		<h2>📤 Send File</h2>
 		<div id="recvLink">
             <div id="copyContainer">
                 <span>🔗 Receiver link:</span>
@@ -136,7 +136,7 @@ func uploadPageHandler(w http.ResponseWriter, r *http.Request) {
 		<form id="uploadForm">
 			<input type="file" name="senderfile" id="fileInput" required />
 			<br/>
-			<button type="submit" class="upload-btn">Upload File</button>
+			<button type="submit" class="upload-btn">Send File</button>
 		</form>
 		<div id="status"></div>
 	</div>
@@ -187,7 +187,7 @@ form.addEventListener("submit", async function(e) {
 	formData.append("senderfile", fileInput.files[0]);
 
 	statusDiv.className = "warning";
-	statusDiv.innerText = "⏫ Uploading...";
+	statusDiv.innerText = "⏫ Sending...";
 	try {
 		const uploadResp = await fetch("/upload?id=" + id, {
 			method: "POST",
@@ -195,14 +195,14 @@ form.addEventListener("submit", async function(e) {
 		});
 		if (uploadResp.ok) {
 			statusDiv.className = "success";
-			statusDiv.innerText = "✅ Upload complete!";
+			statusDiv.innerText = "✅ Send complete!";
 		} else {
 			statusDiv.className = "error";
-			statusDiv.innerText = "❌ Upload failed: " + uploadResp.statusText;
+			statusDiv.innerText = "❌ Send failed: " + uploadResp.statusText;
 		}
 	} catch (err) {
 		statusDiv.className = "error";
-		statusDiv.innerText = "⚠️ Upload aborted or connection lost.";
+		statusDiv.innerText = "⚠️ Send aborted or connection lost.";
 	}
 });
 </script>

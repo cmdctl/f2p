@@ -55,7 +55,12 @@ func senderHandler(w http.ResponseWriter, r *http.Request) {
 
 func sendFile(baseURL, filePath string) {
 	// 1) obtain id + recv link
-	resp, err := http.Get(baseURL + "/id")
+	req, err := http.NewRequest("GET", baseURL+"/id", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,14 +97,13 @@ func sendFile(baseURL, filePath string) {
 		mw.Close()
 	}()
 
-	req, _ := http.NewRequest("POST", baseURL+"/upload?id="+id, pr)
+	req, _ = http.NewRequest("POST", baseURL+"/upload?id="+id, pr)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
 
-	resp2, err := http.DefaultClient.Do(req)
+	resp2, err := httpClient.Do(req)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer resp2.Body.Close()
 	io.Copy(os.Stdout, resp2.Body) // prints "OK"
 }
-
